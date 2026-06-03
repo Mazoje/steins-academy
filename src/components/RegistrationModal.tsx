@@ -40,8 +40,12 @@ export default function RegistrationModal({ courseId, courseTitle, price, onClos
       const data = await response.json();
 
       if (data?.authorization_url) {
-        // Safe top-level redirection to open the Paystack Sandbox layout
-        window.top.location.href = data.authorization_url;
+        // Safe top-level redirection to open the Paystack Sandbox layout with explicit null guarding
+        if (window.top) {
+          window.top.location.href = data.authorization_url;
+        } else {
+          window.location.href = data.authorization_url;
+        }
       } else {
         throw new Error(data.error || 'Empty authorization routing sequence returned.');
       }
@@ -50,30 +54,6 @@ export default function RegistrationModal({ courseId, courseTitle, price, onClos
       alert(`Portal Error: ${error.message || 'Check local server engine terminal logs.'}`);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // ✅ Correctly mapped state variables to update Supabase records safely
-  const handlePaymentSuccess = async (reference: string) => {
-    try {
-      console.log("Paystack payment verified. Reference:", reference);
-
-      const updateResponse = await fetch('/api/payments/verify-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email, // Fixed reference parameter
-          courseId: courseId,     // Fixed reference parameter
-          status: 'success'
-        })
-      });
-
-      if (updateResponse.ok) {
-        alert("Registration complete! Welcome to the academy.");
-        onClose(); 
-      }
-    } catch (error) {
-      console.error("Failed to update database status on checkout:", error);
     }
   };
 
