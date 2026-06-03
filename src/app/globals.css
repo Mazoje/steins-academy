@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-steins-navy: #001D4A;
+  --color-steins-gold: #A27B2C;
+  --color-steins-canvas: #F8F9FA;
+}
+
+/* Custom Geometric Grid Background Pattern */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(0, 29, 74, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 29, 74, 0.04) 1px, transparent 1px);
+}
+
+/* Luxury Background Ambient Radial Light Glow */
+.distribution-glow {
+  background: radial-gradient(100% 100% at 50% 0%, rgba(162, 123, 44, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+}
