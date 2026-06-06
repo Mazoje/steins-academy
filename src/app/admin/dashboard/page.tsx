@@ -17,12 +17,13 @@ interface EnrollmentRecord {
   phone: string;
   course_id: string;
   amount: number;
-  status: 'pending' | 'success';
+  status: 'pending' | 'success' | 'pending_verification'; // Extended to safely support manual bank verification paths
 }
 
 export default function AdminDashboard() {
   const [records, setRecords] = useState<EnrollmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null); // Prevents multi-click spam during submission handshakes
   const [filter, setFilter] = useState<'all' | 'success' | 'pending'>('all');
 
   // Fetch telemetry matrix lines directly from Supabase
@@ -39,6 +40,29 @@ export default function AdminDashboard() {
     setLoading(false);
   };
 
+  // One-click update handler to flip transfer states directly to active success lines
+  const handleApprovePayment = async (recordId: string) => {
+    if (!window.confirm("Confirm you have verified this direct bank transfer alert?")) return;
+    
+    setActionLoadingId(recordId);
+    try {
+      const { error } = await supabase
+        .from('enrollments')
+        .update({ status: 'success' })
+        .eq('id', recordId);
+
+      if (error) throw error;
+
+      // Optimistically adjust local layout states or clean pull a fresh snapshot
+      await fetchEnrollments();
+    } catch (err: any) {
+      console.error('Handshake verification error:', err);
+      alert(`Database update issue: ${err.message || 'Check active RLS configuration policies.'}`);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   useEffect(() => {
     fetchEnrollments();
   }, []);
@@ -50,11 +74,12 @@ export default function AdminDashboard() {
 
   const filteredRecords = records.filter(record => {
     if (filter === 'success') return record.status === 'success';
-    if (filter === 'pending') return record.status === 'pending';
+    // Groups both standard sandboxed payment sessions and manual verification flags under one management view
+    if (filter === 'pending') return record.status === 'pending' || record.status === 'pending_verification';
     return true;
   });
 
- return (
+  return (
     // Added pt-28 to push the admin screen layout safely beneath your floating global capsule header
     <div className="min-h-screen bg-[#F8F9FA] text-[#001D4A] p-6 pt-28 font-sans bg-grid-pattern bg-[size:40px_40px]">
       
@@ -85,8 +110,10 @@ export default function AdminDashboard() {
             <div className="text-2xl font-black mt-1">{records.filter(r => r.status === 'success').length}</div>
           </div>
           <div className="bg-white p-5 border border-slate-200 rounded-2xl shadow-xs">
-            <span className="text-[9px] font-bold text-slate-400 tracking-wider uppercase block">Abandonded / Pending Leads</span>
-            <div className="text-2xl font-black text-slate-400 mt-1">{records.filter(r => r.status === 'pending').length}</div>
+            <span className="text-[9px] font-bold text-slate-400 tracking-wider uppercase block">Awaiting Action / Pending Leads</span>
+            <div className="text-2xl font-black text-slate-400 mt-1">
+              {records.filter(r => r.status === 'pending' || r.status === 'pending_verification').length}
+            </div>
           </div>
         </div>
 
@@ -102,7 +129,7 @@ export default function AdminDashboard() {
                   : 'text-slate-400 hover:text-[#001D4A]'
               }`}
             >
-              {type === 'all' ? 'All Registrations' : `${type} entries`}
+              {type === 'all' ? 'All Registrations' : type === 'pending' ? 'Pending & Unverified' : `${type} entries`}
             </button>
           ))}
         </div>
@@ -137,13 +164,28 @@ export default function AdminDashboard() {
                       </td>
                       <td className="p-4 font-bold">₦{Number(record.amount).toLocaleString()}</td>
                       <td className="p-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${
-                          record.status === 'success' 
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                            : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}>
-                          {record.status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                            record.status === 'success' 
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                              : record.status === 'pending_verification'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200 animate-pulse'
+                              : 'bg-slate-50 text-slate-500 border border-slate-200'
+                          }`}>
+                            {record.status.replace('_', ' ')}
+                          </span>
+
+                          {/* Render contextual execution action buttons only when verification states match */}
+                          {record.status === 'pending_verification' && (
+                            <button
+                              disabled={actionLoadingId !== null}
+                              onClick={() => handleApprovePayment(record.id)}
+                              className="px-2.5 py-1 text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 rounded-md transition-colors shadow-xs cursor-pointer tracking-wide uppercase"
+                            >
+                              {actionLoadingId === record.id ? 'Saving...' : 'Approve'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4 text-slate-400 text-[11px]">
                         {new Date(record.created_at).toLocaleDateString('en-GB', {

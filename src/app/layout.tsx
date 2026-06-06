@@ -18,21 +18,22 @@ export default function RootLayout({
       <body className="antialiased selection:bg-steins-gold/30">
         
         {/* The Master Sticky Navbar */}
-        <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-white/95 backdrop-blur-md border border-slate-200/80 px-6 py-2.5 rounded-full shadow-lg grid grid-cols-3 items-center max-w-5xl w-[92%] gap-4">
+        <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-white/95 backdrop-blur-md border border-slate-200/80 px-6 py-2.5 rounded-full shadow-lg flex items-center justify-between md:grid md:grid-cols-3 max-w-5xl w-[92%] gap-4">
           
-          {/* Column 1: Brand Asset Logo (Replaced text with optimized image asset) */}
+          {/* Column 1: Brand Asset Logo */}
           <Link href="/" className="flex items-center justify-self-start shrink-0 group">
-            <Image 
-              src="/steins.png"             // Make sure 'steins.png' is placed inside your /public folder
-              alt="Steins Inc. Logo"
-              width={140}                   // Aspect-ratio layout standard
-              height={32}                   // Sized down smoothly to match navbar height scale
-              className="h-7 w-auto object-contain group-hover:opacity-85 transition-opacity"
-              priority                      // Injects early asset rendering flag
-            />
+           <Image 
+  src="/logo.png"             // 👈 Removed the broken dot. Must be strictly "/steins.png"
+  alt="Steins Inc. Logo"
+  width={140}                   
+  height={32}                   
+  className="h-7 w-auto object-contain group-hover:opacity-85 transition-opacity"
+  style={{ width: 'auto', minWidth: '140px', minHeight: '32px' }} 
+  priority                      
+/>
           </Link>
 
-          {/* Column 2: Public Navigation Links (Absolute Center + No Text Wrapping) */}
+          {/* Column 2: Public Navigation Links */}
           <nav className="hidden md:flex items-center gap-6 text-xs font-semibold tracking-wider text-slate-600 justify-self-center whitespace-nowrap">
             <Link href="/" className="text-steins-gold font-bold whitespace-nowrap">MAIN HUB</Link>
             <Link href="https://steins-inc-website.vercel.app/studios" className="hover:text-steins-navy transition-colors whitespace-nowrap">STUDIOS</Link>

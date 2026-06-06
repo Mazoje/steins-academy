@@ -1,6 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import { createClient } from '@supabase/supabase-js' ; // Adjust this import path to match where your supabase client is initialized
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface RegistrationModalProps {
   courseId: string;
@@ -18,40 +24,30 @@ export default function RegistrationModal({ courseId, courseTitle, price, onClos
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handlePaymentInitialization = async () => {
+  const handleOfflineRegistration = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/payments/paystack', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          courseId,
-          fullName: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-        }),
-      });
+      // Direct client-side write to your existing Supabase table
+      const { error } = await supabase
+        .from('enrollments') // Replace with your exact Supabase table name if different
+        .insert([
+          {
+            course_id: courseId,
+            full_name: formData.fullName,
+            email: formData.email,
+            phone: formData.phone,
+            status: 'pending_verification', // Safely logs them for your admin dashboard review
+            amount: price,
+          },
+        ]);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Server gateway handshake rejected.');
-      }
+      if (error) throw error;
 
-      const data = await response.json();
-
-      if (data?.authorization_url) {
-        // Safe top-level redirection to open the Paystack Sandbox layout with explicit null guarding
-        if (window.top) {
-          window.top.location.href = data.authorization_url;
-        } else {
-          window.location.href = data.authorization_url;
-        }
-      } else {
-        throw new Error(data.error || 'Empty authorization routing sequence returned.');
-      }
+      alert('Registration initiated! Access will be granted as soon as our admin team confirms the transfer transaction.');
+      onClose();
     } catch (error: any) {
-      console.error('Handshake execution issue:', error);
-      alert(`Portal Error: ${error.message || 'Check local server engine terminal logs.'}`);
+      console.error('Database logging issue:', error);
+      alert(`Portal Error: ${error.message || 'Could not save registration. Please check connection.'}`);
     } finally {
       setLoading(false);
     }
@@ -86,11 +82,29 @@ export default function RegistrationModal({ courseId, courseTitle, price, onClos
               </div>
             </div>
           ) : (
-            <div className="bg-white p-6 border border-slate-200 rounded-xl text-center">
-              <span className="text-[9px] font-bold tracking-widest text-slate-400 uppercase block mb-1">Total Fee Summary</span>
-              <div className="text-2xl font-black text-[#001D4A]">₦{price.toLocaleString()}</div>
-              <p className="text-[11px] text-slate-400 mt-2 max-w-xs mx-auto leading-relaxed">
-                Clicking authorize will handoff authorization securely to our sandbox gateway engine.
+            <div className="space-y-4 bg-white p-5 border border-slate-200 rounded-xl">
+              <div className="text-center">
+                <span className="text-[9px] font-bold tracking-widest text-slate-400 uppercase block mb-1">Direct Bank Transfer</span>
+                <div className="text-2xl font-black text-[#001D4A]">₦{price.toLocaleString()}</div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-[11px] space-y-2.5 font-medium text-[#001D4A]">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Bank Name:</span>
+                  <span>FIRST CITY MONUMENT BANK</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400">Account Number:</span>
+                  <span className="font-mono text-xs font-bold tracking-wider bg-slate-200/60 px-2 py-0.5 rounded">9797476011</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Account Name:</span>
+                  <span>A Ten Midas General Enterprise</span>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-400 text-center leading-relaxed px-2">
+                Kindly complete your transfer, then hit the completion button below. Our portal administration will instantly confirm payment alerts to authorize your account.
               </p>
             </div>
           )}
@@ -112,13 +126,13 @@ export default function RegistrationModal({ courseId, courseTitle, price, onClos
             </button>
           ) : (
             <div className="flex gap-2">
-              <button onClick={() => setStep(1)} className="border border-slate-200 text-slate-500 text-[10px] font-bold px-4 py-2.5 rounded-xl cursor-pointer">BACK</button>
+              <button disabled={loading} onClick={() => setStep(1)} className="border border-slate-200 text-slate-500 text-[10px] font-bold px-4 py-2.5 rounded-xl cursor-pointer disabled:opacity-50">BACK</button>
               <button
                 disabled={loading}
-                onClick={handlePaymentInitialization}
+                onClick={handleOfflineRegistration}
                 className="bg-[#A27B2C] text-white text-[10px] font-bold px-5 py-2.5 rounded-xl tracking-wider cursor-pointer"
               >
-                {loading ? 'WAITING...' : 'AUTHORIZE'}
+                {loading ? 'WAITING...' : 'I HAVE PAID'}
               </button>
             </div>
           )}
